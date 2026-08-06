@@ -50,4 +50,10 @@ const cancelOrder = async(req,res) =>{
     return res.status(500).json({ error: 'Failed to cancel order' });
   }
 };
+
+/*const updateorder = async(req,res)=>{
+  const {id} =req.body;
+  await Order.findByIdAndUpdate({_id:id})
+}*/
+
 export {addToOrder,getOrder,cancelOrder}
