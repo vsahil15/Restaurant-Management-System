@@ -39,9 +39,9 @@ const getOrder =async(req,res)=>{
 };
 
 const cancelOrder = async(req,res) =>{
-  const { id } = req.body;
+  const { id } = req.params;
   try{
-    await Order.findByIdAndDelete({_id:id});
+    await Order.findByIdAndDelete({id});
     return res.status(200).json({
       message:"succussfully cancel your order.."
     })
