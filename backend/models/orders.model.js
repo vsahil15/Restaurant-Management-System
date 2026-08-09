@@ -6,6 +6,8 @@ const orderSchema = new mongoose.Schema({
         price:Number,
         quantity:Number
     }]
+}, {
+  timestamps: true 
 });
 
 const Order = mongoose.model('Order',orderSchema);
