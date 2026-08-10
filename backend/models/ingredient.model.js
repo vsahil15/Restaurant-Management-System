@@ -5,7 +5,8 @@ const ingredientSchema = new mongoose.Schema({
     itemName:{
          type:String,
          required:true,
-         trim:true
+         trim:true,
+         unique:true
       },
     itemCurrentStock:{
       type:Number,

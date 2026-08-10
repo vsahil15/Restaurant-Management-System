@@ -1,14 +1,18 @@
 import Booking from '../models/booked.model.js';
-const booking = async(req,res)=>{
-    const { userTable,userTime,userDate } = req.body;
+const booking = async (req, res) => {
+    const { userTable, userTime, userDate } = req.body;
     const combinedSlot = `${userDate}T${userTime}:00`;
+    const userId = req.user?.id;
 
-try{
-     
-    const existingBooking = await Booking.findOne({
-                                            tableNo: userTable,
-                                            bookingSlot: combinedSlot
-                                           });
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required to make a booking.' });
+    }
+
+    try {
+      const existingBooking = await Booking.findOne({
+        tableNo: userTable,
+        bookingSlot: combinedSlot
+      });
     
     //validation of user entered data has not been done in backend
     if(existingBooking){
@@ -18,6 +22,7 @@ try{
     }
 
     const NewBooking = new Booking({
+        userId,
         tableNo: userTable,
         bookingSlot: combinedSlot
     });

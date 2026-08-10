@@ -1,10 +1,18 @@
 import Order from '../models/orders.model.js';
  const addToOrder = async (req, res) => {
  const { itemName, itemPrice, quantity } = req.body;
- const orderItemName = itemName ;
- const orderItemPrice = itemPrice ;
+ const userId = req.user?.id;
+ 
+ const orderItemName = itemName;
+ const orderItemPrice = itemPrice;
  const orderQuantity = Number(quantity);
  const orderPrice = Number(orderItemPrice);
+
+ if (!userId) {
+  return res.status(401).json({
+   error: 'Authentication required to place an order.'
+  });
+ }
 
  if (!orderItemName || Number.isNaN(orderPrice) || Number.isNaN(orderQuantity)) {
   return res.status(400).json({
@@ -13,6 +21,7 @@ import Order from '../models/orders.model.js';
  }
 
  const newOrder = new Order({
+   userId,
    items: [{
     name: orderItemName,
     price: orderPrice,
