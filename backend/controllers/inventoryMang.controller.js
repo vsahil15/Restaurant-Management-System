@@ -20,12 +20,12 @@ const getAll = async(req,res)=>{
 
 
 const addIngredient = async(req,res)=>{
- const { itemName, itemCurrentStock,stockUnit,costPerUnit}= req.body;
+ const { itemName, itemCurrentStock,costPerUnit}= req.body;
 try{
  const newIngredient = new Ingredient({
     itemName,
     itemCurrentStock,
-    stockUnit,
+    stockUnit: 'g',
     costPerUnit
  });
 
@@ -48,12 +48,12 @@ try{
 
 const refillIngredient = async(req,res)=>{
   const { id } = req.params;
-  const { rawMaterialName,addQuantity,materialunit,perPrice } = req.body;
+  const { rawMaterialName,addQuantity,perPrice } = req.body;
  try{
   const restock = await Ingredient.findByIdAndUpdate(id,{
     itemName:rawMaterialName ,
     $inc:{itemCurrentStock:addQuantity},
-    stockUnit:materialunit,
+    stockUnit:'g',
     costPerUnit:perPrice
   },
 {

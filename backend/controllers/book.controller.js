@@ -55,7 +55,8 @@ async function checkTable(Date,Time){
 
 
 const checkAvailable = async (req,res) => {
-    const {bookDate,bookTime}=req.body;
+    const bookDate = req.body?.bookDate || req.query?.bookDate;
+    const bookTime = req.body?.bookTime || req.query?.bookTime;
     try{
     const vacantTable =  await checkTable(bookDate,bookTime);
     return res.status(200).json({
@@ -119,4 +120,18 @@ const updateBooking= async(req,res)=>{
  }
 };
 
-export { booking,checkAvailable,cancelBooking,updateBooking };
+const getUserBookings = async (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) {
+        return res.status(401).json({ message: 'Authentication required.' });
+    }
+    try {
+        const bookings = await Booking.find({ userId }).sort({ bookingSlot: 1 });
+        return res.status(200).json({ bookings });
+    } catch (err) {
+        console.error(err.message);
+        return res.status(500).json({ message: 'Failed to retrieve bookings.' });
+    }
+};
+
+export { booking,checkAvailable,cancelBooking,updateBooking,getUserBookings };

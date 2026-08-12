@@ -16,7 +16,11 @@ const ingredientSchema = new mongoose.Schema({
     stockUnit:{
       type:String,
       required:[true,'Measurement unit is required'],
-      enum:['g','kg','li','pcs'],
+      enum:{
+        values:['g'],
+        message:'Ingredient stock unit must be grams (g)'
+      },
+      default:'g',
       trim:true
     }, 
     costPerUnit:{
