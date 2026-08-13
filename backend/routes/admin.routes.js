@@ -9,7 +9,7 @@ router.use(authenticate, adminOnly);
 
 router.get('/stats', adminController.getAdminDashboardStats);
 router.get('/orders-by-date', adminController.getOrdersByDate);
-router.get('/user-bill', adminController.getUserBill);
+router.get('/table-bill', adminController.getTableBill);
 router.get('/bookings', adminController.getBookedTables);
 router.delete('/booking/:id/free', adminController.freeTable);
 

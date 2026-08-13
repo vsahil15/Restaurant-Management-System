@@ -138,7 +138,7 @@ const AdminInventory = () => {
                             </span>
                           )}
                         </td>
-                        <td style={{ textAlign: 'right' }}>${item.costPerUnit.toFixed(2)}</td>
+                        <td style={{ textAlign: 'right' }}>₹{item.costPerUnit.toFixed(2)}</td>
                         <td style={{ textAlign: 'center' }}>
                           <button onClick={() => handleStartRefill(item)} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
                             Refill
@@ -197,7 +197,7 @@ const AdminInventory = () => {
                 </div>
 
                 <div className="form-group">
-                  <label>Cost Per Unit ($)</label>
+                  <label>Cost Per Unit (₹)</label>
                   <input 
                     type="number" 
                     step="0.01" 
@@ -253,7 +253,7 @@ const AdminInventory = () => {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="ing-cost">Cost Per Unit ($)</label>
+                  <label htmlFor="ing-cost">Cost Per Unit (₹)</label>
                   <input 
                     type="number" 
                     step="0.01" 

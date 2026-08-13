@@ -21,6 +21,23 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// Admin Route wrapper component
+const AdminRoute = ({ children }) => {
+  const storedUser = localStorage.getItem('user');
+  if (!storedUser) {
+    return <Navigate to="/login" replace />;
+  }
+  try {
+    const userObj = JSON.parse(storedUser);
+    if (!userObj.isAdmin) {
+      return <Navigate to="/" replace />;
+    }
+  } catch (e) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
 // Loader function definitions for data routers (Data Approach)
 export const menuLoader = async () => {
   try {
@@ -100,16 +117,16 @@ export const router = createBrowserRouter([
       },
       {
         path: 'admin/inventory',
-        element: <AdminInventory />,
+        element: <AdminRoute><AdminInventory /></AdminRoute>,
         loader: inventoryLoader,
       },
       {
         path: 'admin/menu',
-        element: <AdminMenu />,
+        element: <AdminRoute><AdminMenu /></AdminRoute>,
       },
       {
         path: 'admin',
-        element: <AdminPanel />,
+        element: <AdminRoute><AdminPanel /></AdminRoute>,
       },
     ],
   },

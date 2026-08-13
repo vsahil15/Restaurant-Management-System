@@ -1,11 +1,94 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/api';
 
+// --- Custom Date picker: CalendarWidget ---
+const CalendarWidget = ({ selectedDate, onSelectDate }) => {
+  const [currentDate, setCurrentDate] = useState(() => {
+    if (selectedDate) return new Date(selectedDate);
+    return new Date();
+  });
+  
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June", 
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayIndex = new Date(year, month, 1).getDay();
+
+  const handlePrevMonth = () => {
+    setCurrentDate(new Date(year, month - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(new Date(year, month + 1, 1));
+  };
+
+  const days = [];
+  for (let i = 0; i < firstDayIndex; i++) {
+    days.push(null);
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    days.push(new Date(year, month, d));
+  }
+
+  const formatDateString = (date) => {
+    if (!date) return '';
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  return (
+    <div className="custom-calendar-widget">
+      <div className="calendar-header">
+        <button type="button" onClick={handlePrevMonth}>&lt;</button>
+        <span>{monthNames[month]} {year}</span>
+        <button type="button" onClick={handleNextMonth}>&gt;</button>
+      </div>
+      <div className="calendar-weekdays">
+        <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+      </div>
+      <div className="calendar-days">
+        {days.map((date, idx) => {
+          if (!date) return <div key={`empty-${idx}`} className="calendar-day empty"></div>;
+          
+          const dateStr = formatDateString(date);
+          const isSelected = dateStr === selectedDate;
+          
+          return (
+            <button
+              key={dateStr}
+              type="button"
+              className={`calendar-day ${isSelected ? 'selected' : ''}`}
+              onClick={() => onSelectDate(dateStr)}
+            >
+              {date.getDate()}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const getTodayDateString = () => {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, '0');
+  const d = String(today.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 const AdminPanel = () => {
   const [stats, setStats] = useState({ totalUsers: 0, totalOrders: 0, totalBookings: 0 });
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState(getTodayDateString());
   const [orderData, setOrderData] = useState(null);
-  const [searchUser, setSearchUser] = useState('');
+  const [searchTableNo, setSearchTableNo] = useState('');
   const [billData, setBillData] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -24,6 +107,7 @@ const AdminPanel = () => {
 
     fetchAdminStats();
     fetchBookings();
+    handleDateSelect(getTodayDateString());
   }, []);
 
   const fetchBookings = async () => {
@@ -35,17 +119,12 @@ const AdminPanel = () => {
     }
   };
 
-  const handleDateOrders = async (e) => {
-    e.preventDefault();
-    if (!date) {
-      setError('Please select a date.');
-      return;
-    }
-
+  const handleDateSelect = async (selectedDate) => {
+    setDate(selectedDate);
     setLoading(true);
     setError('');
     try {
-      const res = await api.get('/admin/orders-by-date', { params: { date } });
+      const res = await api.get('/admin/orders-by-date', { params: { date: selectedDate } });
       setOrderData(res.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Could not fetch orders for that date.');
@@ -54,21 +133,21 @@ const AdminPanel = () => {
     }
   };
 
-  const handleUserSearch = async (e) => {
+  const handleTableBillSearch = async (e) => {
     e.preventDefault();
-    if (!searchUser.trim()) {
-      setError('Please enter a username.');
+    if (!searchTableNo.trim()) {
+      setError('Please enter a table number.');
       return;
     }
 
     setLoading(true);
     setError('');
     try {
-      const res = await api.get('/admin/user-bill', { params: { username: searchUser.trim() } });
+      const res = await api.get('/admin/table-bill', { params: { tableNo: searchTableNo.trim() } });
       setBillData(res.data);
     } catch (err) {
       setBillData(null);
-      setError(err.response?.data?.message || 'User bill lookup failed.');
+      setError(err.response?.data?.message || 'Table bill lookup failed.');
     } finally {
       setLoading(false);
     }
@@ -112,16 +191,18 @@ const AdminPanel = () => {
       <div className="content-grid" style={{ marginTop: '2rem' }}>
         <div className="glass" style={{ padding: '2rem' }}>
           <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Orders by Date</h2>
-          <form onSubmit={handleDateOrders} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-            <button type="submit" className="btn btn-primary" disabled={loading}>View Orders</button>
-          </form>
+          <div style={{ marginBottom: '1.5rem', maxWidth: '340px' }}>
+            <CalendarWidget 
+              selectedDate={date} 
+              onSelectDate={handleDateSelect} 
+            />
+          </div>
 
           {orderData && (
             <div>
               <p><strong>Date:</strong> {orderData.date}</p>
               <p><strong>Orders:</strong> {orderData.totalOrders}</p>
-              <p><strong>Revenue:</strong> ${Number(orderData.totalRevenue || 0).toFixed(2)}</p>
+              <p><strong>Revenue:</strong> ₹{Number(orderData.totalRevenue || 0).toFixed(2)}</p>
               <ul>
                 {orderData.orders?.map((order) => (
                   <li key={order._id} style={{ marginBottom: '0.75rem' }}>
@@ -135,22 +216,23 @@ const AdminPanel = () => {
         </div>
 
         <div className="glass" style={{ padding: '2rem' }}>
-          <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Generate Bill by Username</h2>
-          <form onSubmit={handleUserSearch} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-            <input type="text" value={searchUser} onChange={(e) => setSearchUser(e.target.value)} placeholder="Enter username" required />
+          <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Generate Bill by Table Number</h2>
+          <form onSubmit={handleTableBillSearch} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+            <input type="number" min="1" max="25" value={searchTableNo} onChange={(e) => setSearchTableNo(e.target.value)} placeholder="Enter table number (e.g. 5)" required />
             <button type="submit" className="btn btn-primary" disabled={loading}>Search</button>
           </form>
 
           {billData && (
             <div>
+              <p><strong>Table:</strong> #{billData.tableNo}</p>
               <p><strong>Customer:</strong> {billData.user?.name}</p>
               <p><strong>Email:</strong> {billData.user?.email}</p>
-              <p><strong>Total Bill:</strong> ${Number(billData.totalBill || 0).toFixed(2)}</p>
+              <p><strong>Total Bill:</strong> ₹{Number(billData.totalBill || 0).toFixed(2)}</p>
               <ul>
                 {billData.orders?.map((order) => (
                   <li key={order._id} style={{ marginBottom: '0.75rem' }}>
                     <strong>Order:</strong> {new Date(order.createdAt).toLocaleString()} <br />
-                    {order.items?.map((item) => `${item.name} x${item.quantity} = $${(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}`).join(', ')}
+                    {order.items?.map((item) => `${item.name} x${item.quantity} = ₹${(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}`).join(', ')}
                   </li>
                 ))}
               </ul>

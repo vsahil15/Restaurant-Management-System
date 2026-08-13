@@ -4,7 +4,7 @@ import Ingredient from '../models/ingredient.model.js';
 
 
 
-  async function KillIngredient(orderDetails){
+  async function KillIngredient(orderDetails, addedQuantity = 1){
   // 1. Get the name of the ordered item
   const orderName = orderDetails.items[0].name;
   let bulkOps = [];
@@ -13,15 +13,15 @@ import Ingredient from '../models/ingredient.model.js';
   switch(orderName) {
     case "veg paneer":
       bulkOps = [
-        { updateOne: { filter: { itemName: 'paneer' }, update: { $inc: { quantity: -200 } } } },
-        { updateOne: { filter: { itemName: 'salt' }, update: { $inc: { quantity: -5 } } } }
+        { updateOne: { filter: { itemName: 'paneer' }, update: { $inc: { quantity: -200 * addedQuantity } } } },
+        { updateOne: { filter: { itemName: 'salt' }, update: { $inc: { quantity: -5 * addedQuantity } } } }
       ];
       break;
 
     case "chilly paneer":
       bulkOps = [
-        { updateOne: { filter: { itemName: 'paneer' }, update: { $inc: { quantity: -150 } } } },
-        { updateOne: { filter: { itemName: 'capsicum' }, update: { $inc: { quantity: -50 } } } }
+        { updateOne: { filter: { itemName: 'paneer' }, update: { $inc: { quantity: -150 * addedQuantity } } } },
+        { updateOne: { filter: { itemName: 'capsicum' }, update: { $inc: { quantity: -50 * addedQuantity } } } }
       ];
       break;
       
@@ -67,21 +67,37 @@ import Ingredient from '../models/ingredient.model.js';
   });
  }
 
- const newOrder = new Order({
-  userId:userId,
-   items: [{
-    name: orderItemName,
-    price: orderPrice,
-    quantity: orderQuantity
-   }]
- }
- 
-);
  try {
+  const existingOrder = await Order.findOne({
+    userId: userId,
+    "items.name": orderItemName
+  });
+
+  if (existingOrder) {
+    const itemIndex = existingOrder.items.findIndex(item => item.name === orderItemName);
+    if (itemIndex !== -1) {
+      existingOrder.items[itemIndex].quantity += orderQuantity;
+    }
+    await existingOrder.save();
+    await KillIngredient(existingOrder, orderQuantity);
+    return res.status(200).json({
+      message: 'Order placed successfully'
+    });
+  }
+
+  const newOrder = new Order({
+    userId: userId,
+    items: [{
+      name: orderItemName,
+      price: orderPrice,
+      quantity: orderQuantity
+    }]
+  });
+
   await newOrder.save();
-  await KillIngredient(newOrder);
+  await KillIngredient(newOrder, orderQuantity);
   return res.status(200).json({
-   message: 'Order placed successfully'
+    message: 'Order placed successfully'
   });
  } catch (err) {
   console.error(err.message);

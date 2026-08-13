@@ -1,6 +1,27 @@
 import Booking from '../models/booked.model.js';
+
+const isValidTimeSlot = (timeStr) => {
+    if (!timeStr) return false;
+    const parts = timeStr.split(':');
+    if (parts.length < 2) return false;
+    const hour = parseInt(parts[0], 10);
+    const minute = parseInt(parts[1], 10);
+    if (isNaN(hour) || isNaN(minute)) return false;
+    const totalMinutes = hour * 60 + minute;
+    // 5:00 PM is 17:00 -> 1020 minutes
+    // 10:00 PM is 22:00 -> 1320 minutes
+    return totalMinutes >= 1020 && totalMinutes <= 1320;
+};
+
 const booking = async (req, res) => {
     const { userTable, userTime, userDate } = req.body;
+
+    if (!isValidTimeSlot(userTime)) {
+        return res.status(400).json({
+            message: 'Table bookings are only allowed between 5:00 PM and 10:00 PM.'
+        });
+    }
+
     const combinedSlot = `${userDate}T${userTime}:00`;
     const userId = req.user?.id;
 
@@ -57,6 +78,13 @@ async function checkTable(Date,Time){
 const checkAvailable = async (req,res) => {
     const bookDate = req.body?.bookDate || req.query?.bookDate;
     const bookTime = req.body?.bookTime || req.query?.bookTime;
+
+    if (!isValidTimeSlot(bookTime)) {
+        return res.status(400).json({
+            message: 'Table bookings are only allowed between 5:00 PM and 10:00 PM.'
+        });
+    }
+
     try{
     const vacantTable =  await checkTable(bookDate,bookTime);
     return res.status(200).json({
@@ -89,6 +117,13 @@ const cancelBooking =async (req,res) => {
 const updateBooking= async(req,res)=>{
     const { id } = req.params;
     const { userTable, userTime, userDate } = req.body;
+
+    if (!isValidTimeSlot(userTime)) {
+        return res.status(400).json({
+            message: 'Table bookings are only allowed between 5:00 PM and 10:00 PM.'
+        });
+    }
+
     const combinedSlot = `${userDate}T${userTime}:00`;
     try{
         const conflictingBooking = await Booking.findOne(

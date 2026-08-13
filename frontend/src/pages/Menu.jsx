@@ -108,7 +108,7 @@ const Menu = () => {
                 </div>
 
                 <div className="menu-card-footer">
-                  <span className="menu-card-price">${item.price.toFixed(2)}</span>
+                  <span className="menu-card-price">₹{item.price.toFixed(2)}</span>
                   
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <input

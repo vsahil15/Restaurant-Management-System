@@ -26,6 +26,11 @@ const register = async (req, res) => {
   }
 
   try {
+    const existingUserByName = await User.findOne({ name: new RegExp(`^${name.trim()}$`, 'i') });
+    if (existingUserByName) {
+      return res.status(409).json({ message: 'Username is already taken.' });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ message: 'Email is already registered.' });
@@ -45,18 +50,23 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required.' });
+    return res.status(400).json({ message: 'Username/Email and password are required.' });
   }
 
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({
+      $or: [
+        { email: email.toLowerCase().trim() },
+        { name: new RegExp(`^${email.trim()}$`, 'i') }
+      ]
+    });
     if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password.' });
+      return res.status(401).json({ message: 'Invalid username/email or password.' });
     }
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
-      return res.status(401).json({ message: 'Invalid email or password.' });
+      return res.status(401).json({ message: 'Invalid username/email or password.' });
     }
 
     const accessToken = createAccessToken(user);
@@ -64,13 +74,20 @@ const login = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
+    const allowedEmails = (config.ADMIN_EMAIL || 'admin@gusto.com')
+      .split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
+    const isAdmin = allowedEmails.includes(user.email.toLowerCase());
+
     return res.status(200).json({
       accessToken,
       refreshToken,
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        isAdmin: isAdmin
       }
     });
   } catch (err) {

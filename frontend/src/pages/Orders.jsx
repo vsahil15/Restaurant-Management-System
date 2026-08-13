@@ -86,10 +86,10 @@ const Orders = () => {
                       {order.items?.map((item, idx) => (
                         <tr key={idx}>
                           <td style={{ fontWeight: 500 }}>{item.name}</td>
-                          <td style={{ textAlign: 'right' }}>${item.price.toFixed(2)}</td>
+                          <td style={{ textAlign: 'right' }}>₹{item.price.toFixed(2)}</td>
                           <td style={{ textAlign: 'center' }}>{item.quantity}</td>
                           <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)' }}>
-                            ${(item.price * item.quantity).toFixed(2)}
+                            ₹{(item.price * item.quantity).toFixed(2)}
                           </td>
                         </tr>
                       ))}
@@ -100,7 +100,7 @@ const Orders = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
                   <div>
                     <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>Grand Total:</span>
-                    <strong style={{ fontSize: '1.4rem', color: 'var(--accent-color)' }}>${orderTotal.toFixed(2)}</strong>
+                    <strong style={{ fontSize: '1.4rem', color: 'var(--accent-color)' }}>₹{orderTotal.toFixed(2)}</strong>
                   </div>
                   
                   <button onClick={() => handleCancelOrder(order._id)} className="btn btn-danger" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>

@@ -61,18 +61,23 @@ const getOrdersByDate = async (req, res) => {
   }
 };
 
-const getUserBill = async (req, res) => {
-  const { username } = req.query;
+const getTableBill = async (req, res) => {
+  const { tableNo } = req.query;
 
-  if (!username) {
-    return res.status(400).json({ success: false, message: 'Username is required.' });
+  if (!tableNo) {
+    return res.status(400).json({ success: false, message: 'Table number is required.' });
   }
 
   try {
-    const user = await User.findOne({ name: new RegExp(`^${username}$`, 'i') });
+    const booking = await Booking.findOne({ tableNo: Number(tableNo) }).sort({ createdAt: -1 });
 
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'No active booking found for this table number.' });
+    }
+
+    const user = await User.findById(booking.userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
+      return res.status(404).json({ success: false, message: 'User associated with booking not found.' });
     }
 
     const orders = await Order.find({ userId: user._id.toString() }).sort({ createdAt: -1 });
@@ -84,6 +89,8 @@ const getUserBill = async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      tableNo: Number(tableNo),
+      booking,
       user: { id: user._id, name: user.name, email: user.email },
       orders,
       totalBill
@@ -91,7 +98,7 @@ const getUserBill = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      message: 'Failed to fetch user billing information.',
+      message: 'Failed to fetch table billing information.',
       error: err.message
     });
   }
@@ -136,4 +143,4 @@ const freeTable = async (req, res) => {
   }
 };
 
-export { getAdminDashboardStats, getOrdersByDate, getUserBill, getBookedTables, freeTable };
+export { getAdminDashboardStats, getOrdersByDate, getTableBill, getBookedTables, freeTable };
