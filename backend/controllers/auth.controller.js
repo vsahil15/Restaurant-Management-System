@@ -80,9 +80,16 @@ const login = async (req, res) => {
       .filter(Boolean);
     const isAdmin = allowedEmails.includes(user.email.toLowerCase());
 
+    // Set refresh token as httpOnly cookie (secure:false for localhost HTTP)
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
     return res.status(200).json({
       accessToken,
-      refreshToken,
       user: {
         id: user._id,
         name: user.name,
@@ -97,9 +104,9 @@ const login = async (req, res) => {
 };
 
 const refreshToken = async (req, res) => {
-  const { refreshToken: incomingRefreshToken } = req.body;
+  const incomingRefreshToken = req.cookies.refreshToken;
   if (!incomingRefreshToken) {
-    return res.status(400).json({ message: 'Refresh token is required.' });
+    return res.status(401).json({ message: 'Refresh token is required.' });
   }
 
   try {
@@ -114,7 +121,15 @@ const refreshToken = async (req, res) => {
     user.refreshToken = newRefreshToken;
     await user.save();
 
-    return res.status(200).json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+    // Set new refresh token cookie
+    res.cookie('refreshToken', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({ accessToken: newAccessToken });
   } catch (err) {
     console.error(err.message);
     return res.status(403).json({ message: 'Refresh token is invalid or expired.' });
@@ -122,23 +137,29 @@ const refreshToken = async (req, res) => {
 };
 
 const logout = async (req, res) => {
-  const { refreshToken: incomingRefreshToken } = req.body;
-  if (!incomingRefreshToken) {
-    return res.status(400).json({ message: 'Refresh token is required.' });
-  }
+  const incomingRefreshToken = req.cookies.refreshToken;
 
   try {
-    const decoded = jwt.verify(incomingRefreshToken, config.JWT_REFRESH_SECRET);
-    const user = await User.findById(decoded.id);
-    if (user && user.refreshToken === incomingRefreshToken) {
-      user.refreshToken = null;
-      await user.save();
+    if (incomingRefreshToken) {
+      const decoded = jwt.verify(incomingRefreshToken, config.JWT_REFRESH_SECRET);
+      const user = await User.findById(decoded.id);
+      if (user && user.refreshToken === incomingRefreshToken) {
+        user.refreshToken = null;
+        await user.save();
+      }
     }
-
-    return res.status(200).json({ message: 'Logged out successfully.' });
   } catch (err) {
-    return res.status(200).json({ message: 'Logged out successfully.' });
+    // Token may be expired/invalid, still clear the cookie
   }
+
+  // Clear the refresh token cookie
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+  });
+
+  return res.status(200).json({ message: 'Logged out successfully.' });
 };
 
 export { register, login, refreshToken, logout };

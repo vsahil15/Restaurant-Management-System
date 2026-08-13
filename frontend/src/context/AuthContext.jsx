@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../api/api';
+import axios from 'axios';
+import api, { setAccessToken } from '../api/api';
 
 const AuthContext = createContext(null);
 
@@ -8,25 +9,41 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load initial user state
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
+    // On page load/refresh, try to get a new access token via the httpOnly refresh cookie
+    const silentRefresh = async () => {
       try {
-        setUser(JSON.parse(storedUser));
+        // Use raw axios to bypass the response interceptor (avoids redirect loop)
+        const response = await axios.post(
+          'http://localhost:3000/api/v1/auth/refresh',
+          {},
+          { withCredentials: true }
+        );
+        const { accessToken } = response.data;
+        setAccessToken(accessToken);
+
+        // Load user details from localStorage (public info only, not tokens)
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
       } catch (err) {
-        console.error("Failed to parse user details:", err);
+        // No valid session — clear stale user data
+        console.error("Session expired or no active session:", err);
+        localStorage.removeItem('user');
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+
+    silentRefresh();
   }, []);
 
   const login = async (email, password) => {
     const response = await api.post('/auth/login', { email, password });
-    const { accessToken, refreshToken, user: userData } = response.data;
+    const { accessToken, user: userData } = response.data;
     
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    localStorage.setItem('user', JSON.stringify(userData));
+    setAccessToken(accessToken);                        // Store access token in memory
+    localStorage.setItem('user', JSON.stringify(userData)); // Store public user info for route guards
     
     setUser(userData);
     return userData;
@@ -37,17 +54,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    const refreshToken = localStorage.getItem('refreshToken');
     try {
-      if (refreshToken) {
-        await api.post('/auth/logout', { refreshToken });
-      }
+      await api.post('/auth/logout');
     } catch (err) {
       console.error("Server logout error:", err);
     } finally {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
+      setAccessToken(null);             // Clear in-memory token
+      localStorage.removeItem('user');  // Clear public user info
       setUser(null);
     }
   };

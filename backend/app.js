@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import orderRouter from './routes/order.routes.js';
 import bookRouter from './routes/book.routes.js';
 import inventoryRouter from './routes/inventory.routes.js';
@@ -9,8 +10,12 @@ import adminRouter from './routes/admin.routes.js';
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173',  // Your React frontend URL (cannot be '*' when using credentials)
+  credentials: true,                // Allow cookies to be sent/received cross-origin
+}));
 app.use(express.json());
+app.use(cookieParser());
 
 app.get('/', (req, res) => {
   console.log("web api's are running");
