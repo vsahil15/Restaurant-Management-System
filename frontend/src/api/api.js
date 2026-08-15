@@ -7,8 +7,11 @@ export const setAccessToken = (token) => {
   inMemoryToken = token;
 };
 
+// Use relative path by default so single server deployment works seamlessly
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+
 const api = axios.create({
-  baseURL: 'http://localhost:3000/api/v1',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -46,7 +49,7 @@ api.interceptors.response.use(
       try {
         // Attempt to refresh token — browser sends the httpOnly cookie automatically
         const response = await axios.post(
-          'http://localhost:3000/api/v1/auth/refresh',
+          `${API_BASE_URL}/auth/refresh`,
           {},
           { withCredentials: true }
         );

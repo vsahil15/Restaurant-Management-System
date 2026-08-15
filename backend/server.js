@@ -1,7 +1,11 @@
 import app from './app.js';
 import { connectDb } from './config/db.js';
+import config from './config/config.js';
 
-app.listen(3000,()=>{
-console.log("server is live");
+const PORT = config.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
+
 await connectDb();
