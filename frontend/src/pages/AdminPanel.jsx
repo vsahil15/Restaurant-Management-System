@@ -217,8 +217,8 @@ const AdminPanel = () => {
 
         <div className="glass" style={{ padding: '2rem' }}>
           <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Generate Bill by Table Number</h2>
-          <form onSubmit={handleTableBillSearch} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-            <input type="number" min="1" max="25" value={searchTableNo} onChange={(e) => setSearchTableNo(e.target.value)} placeholder="Enter table number (e.g. 5)" required />
+          <form onSubmit={handleTableBillSearch} style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+            <input type="number" min="1" max="25" style={{ flex: '1 1 180px' }} value={searchTableNo} onChange={(e) => setSearchTableNo(e.target.value)} placeholder="Enter table number (e.g. 5)" required />
             <button type="submit" className="btn btn-primary" disabled={loading}>Search</button>
           </form>
 

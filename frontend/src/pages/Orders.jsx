@@ -97,7 +97,7 @@ const Orders = () => {
                   </table>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                   <div>
                     <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>Grand Total:</span>
                     <strong style={{ fontSize: '1.4rem', color: 'var(--accent-color)' }}>₹{orderTotal.toFixed(2)}</strong>

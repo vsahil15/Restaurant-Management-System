@@ -533,7 +533,7 @@ const BookTable = () => {
               </div>
 
               <form onSubmit={handleUpdateBooking}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '1.5rem' }}>
+                <div className="booking-form-grid">
                   <div className="form-group">
                     <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 600 }}>New Date</label>
                     <CalendarWidget 
@@ -585,7 +585,7 @@ const BookTable = () => {
             <div className="glass" style={{ padding: '2rem', marginBottom: '2rem' }}>
               <h2 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', color: 'var(--accent-color)' }}>New Reservation</h2>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+              <div className="booking-form-grid">
                 <div className="form-group">
                   <label htmlFor="book-date" style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 600 }}>Choose Date</label>
                   <CalendarWidget 

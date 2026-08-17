@@ -174,7 +174,7 @@ const AdminMenu = () => {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-row-2col">
               <div className="form-group">
                 <label htmlFor="dish-price">Price (₹)</label>
                 <input 

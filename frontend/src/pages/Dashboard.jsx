@@ -80,7 +80,7 @@ const Dashboard = () => {
 
           <section style={{ marginTop: '2.5rem' }}>
             <h2 style={{ marginBottom: '1rem', fontSize: '1.5rem', fontWeight: 600 }}>Quick Actions</h2>
-            <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+            <div className="dashboard-grid">
               <Link to="/book-table" className="stat-card glass" style={{ textDecoration: 'none', color: 'inherit', transition: 'var(--transition-smooth)' }}>
                 <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🪑</div>
                 <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem', color: 'var(--accent-color)' }}>Book a Table</h3>
