@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { useLoaderData, useRevalidator, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getCachedMenu, getSyncMenuCache, updateMenuCache } from '../api/menuCache';
 import api from '../api/api';
 
 const Menu = () => {
-  const menuItems = useLoaderData();
-  const revalidator = useRevalidator();
+  const initialCache = getSyncMenuCache();
+  const [menuItems, setMenuItems] = useState(initialCache || []);
+  const [loading, setLoading] = useState(!initialCache);
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -16,6 +18,21 @@ const Menu = () => {
   const [submittingItem, setSubmittingItem] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [pendingItem, setPendingItem] = useState(null);
+
+  const fetchMenu = async (force = false) => {
+    try {
+      const items = await getCachedMenu(force);
+      setMenuItems(items);
+    } catch (err) {
+      console.error("Failed to load menu:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMenu();
+  }, []);
 
   // Extract unique categories, add 'All'
   const categories = ['All', ...new Set(menuItems.map(item => item.category || 'Other'))];

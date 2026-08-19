@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import api from '../api/api';
+import { getCachedMenu, getSyncMenuCache } from '../api/menuCache';
 
 const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [featuredDishes, setFeaturedDishes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const initialCache = getSyncMenuCache();
+  const [featuredDishes, setFeaturedDishes] = useState(() => initialCache ? initialCache.slice(0, 6) : []);
+  const [loading, setLoading] = useState(!initialCache);
 
   // Quick reservation inputs
   const [quickDate, setQuickDate] = useState(() => {
@@ -19,8 +20,7 @@ const Home = () => {
   useEffect(() => {
     const loadFeaturedMenu = async () => {
       try {
-        const res = await api.get('/menu');
-        const items = res.data.menu || [];
+        const items = await getCachedMenu();
         setFeaturedDishes(items.slice(0, 6));
       } catch (err) {
         console.error("Failed to load featured menu:", err);

@@ -46,6 +46,12 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
+      const storedUser = localStorage.getItem('user');
+      // If user is a guest (not logged in), fail immediately without wasting time on /auth/refresh
+      if (!storedUser) {
+        return Promise.reject(error);
+      }
+      
       try {
         // Attempt to refresh token — browser sends the httpOnly cookie automatically
         const response = await axios.post(
@@ -72,6 +78,7 @@ api.interceptors.response.use(
         const isPublicPage = currentPath === '/' || 
                              currentPath === '/menu' || 
                              currentPath === '/book-table' || 
+                             currentPath === '/orders' ||
                              currentPath === '/login' || 
                              currentPath === '/register' || 
                              currentPath === '/forgot-password';

@@ -4,12 +4,33 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/api';
 
 const Orders = () => {
-  const initialOrders = useLoaderData() || [];
-  const revalidator = useRevalidator();
   const { user } = useAuth();
-
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(Boolean(user));
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
+
+  const fetchOrders = async () => {
+    if (!user) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await api.get('/order/my-orders');
+      setOrders(res.data.orders || []);
+    } catch (err) {
+      console.error("Failed to load orders:", err);
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, [user]);
 
   // Clear notifications
   useEffect(() => {
@@ -30,7 +51,7 @@ const Orders = () => {
     try {
       const res = await api.patch(`/order/${id}/cancel`);
       setMessage(res.data.message || "Order successfully cancelled.");
-      revalidator.revalidate();
+      fetchOrders();
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.error || "Failed to cancel order.");
@@ -70,7 +91,11 @@ const Orders = () => {
             </Link>
           </div>
         </div>
-      ) : initialOrders.length === 0 ? (
+      ) : loading ? (
+        <div className="glass" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+          Loading your active orders...
+        </div>
+      ) : orders.length === 0 ? (
         <div className="glass" style={{ padding: '3.5rem 2rem', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🍽️</div>
           <h2 style={{ fontSize: '1.3rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
@@ -90,7 +115,7 @@ const Orders = () => {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {initialOrders.map((order) => {
+          {orders.map((order) => {
             const orderTotal = calculateTotal(order.items);
             return (
               <div key={order._id} className="glass" style={{ padding: '1.75rem' }}>

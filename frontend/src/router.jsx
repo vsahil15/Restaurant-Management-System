@@ -111,17 +111,14 @@ export const router = createBrowserRouter([
       {
         path: 'book-table',
         element: <BookTable />,
-        loader: bookingsLoader,
       },
       {
         path: 'menu',
         element: <Menu />,
-        loader: menuLoader,
       },
       {
         path: 'orders',
         element: <Orders />,
-        loader: ordersLoader,
       },
       {
         path: 'admin/inventory',

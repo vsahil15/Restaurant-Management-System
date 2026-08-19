@@ -349,8 +349,8 @@ const isValidBookingTime = (timeStr) => {
 };
 
 const BookTable = () => {
-  const initialBookings = useLoaderData() || [];
-  const revalidator = useRevalidator();
+  const [myBookings, setMyBookings] = useState([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, login, register, forgotPassword, resetPassword } = useAuth();
@@ -377,6 +377,27 @@ const BookTable = () => {
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [bookingSuccessData, setBookingSuccessData] = useState(null);
+
+  const fetchMyBookings = async () => {
+    if (!user) {
+      setMyBookings([]);
+      return;
+    }
+    try {
+      setLoadingBookings(true);
+      const res = await api.get('/booktable/my-bookings');
+      setMyBookings(res.data.bookings || []);
+    } catch (err) {
+      console.error("Failed to load bookings:", err);
+      setMyBookings([]);
+    } finally {
+      setLoadingBookings(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyBookings();
+  }, [user]);
 
   // Guest Authentication & Auto-Registration Modal state
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -489,7 +510,7 @@ const BookTable = () => {
       setSelectedTable(null);
       setHasChecked(false);
       setShowAuthModal(false);
-      revalidator.revalidate();
+      fetchMyBookings();
       return true;
     } catch (err) {
       const errMsg = err.response?.data?.message || "Booking failed.";
@@ -638,7 +659,7 @@ const BookTable = () => {
     try {
       const res = await api.delete(`/booktable/cancel/booking/${id}`);
       setMessage(res.data.message || "Booking successfully cancelled!");
-      revalidator.revalidate();
+      fetchMyBookings();
     } catch (err) {
       setError(err.response?.data?.message || "Cancellation failed.");
     }
@@ -674,7 +695,7 @@ const BookTable = () => {
       });
       setMessage(res.data.message || "Booking updated successfully!");
       setEditingBooking(null);
-      revalidator.revalidate();
+      fetchMyBookings();
     } catch (err) {
       setError(err.response?.data?.message || "Booking update failed.");
     }
@@ -895,11 +916,13 @@ const BookTable = () => {
                   Sign In to Account
                 </Link>
               </div>
-            ) : initialBookings.length === 0 ? (
+            ) : loadingBookings ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Loading your reservations...</p>
+            ) : myBookings.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No active table reservations found.</p>
             ) : (
               <div className="list-items">
-                {initialBookings.map((b) => (
+                {myBookings.map((b) => (
                   <div key={b._id} className="list-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent-color)' }}>Table #{b.tableNo}</span>
