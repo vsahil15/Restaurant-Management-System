@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
-import { useLoaderData, useRevalidator, Link } from 'react-router-dom';
+import { useLoaderData, useRevalidator, Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import api from '../api/api';
 
 const Menu = () => {
   const menuItems = useLoaderData();
   const revalidator = useRevalidator();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   
   const [quantities, setQuantities] = useState({});
   const [activeCategory, setActiveCategory] = useState('All');
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [submittingItem, setSubmittingItem] = useState(null);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [pendingItem, setPendingItem] = useState(null);
 
   // Extract unique categories, add 'All'
   const categories = ['All', ...new Set(menuItems.map(item => item.category || 'Other'))];
@@ -24,6 +29,14 @@ const Menu = () => {
     const qty = quantities[item._id] || 1;
     setError(null);
     setMessage(null);
+
+    // If user is not logged in, prompt table booking first
+    if (!user) {
+      setPendingItem(item);
+      setShowBookingModal(true);
+      return;
+    }
+
     setSubmittingItem(item._id);
 
     try {
@@ -39,7 +52,13 @@ const Menu = () => {
       revalidator.revalidate();
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || err.response?.data?.error || "Failed to place order.");
+      const errMsg = err.response?.data?.message || err.response?.data?.error || "Failed to place order.";
+      if (errMsg.toLowerCase().includes('book a table') || errMsg.toLowerCase().includes('booking') || err.response?.status === 403) {
+        setPendingItem(item);
+        setShowBookingModal(true);
+      } else {
+        setError(errMsg);
+      }
     } finally {
       setSubmittingItem(null);
     }
@@ -131,6 +150,75 @@ const Menu = () => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Table Booking Prompt Modal */}
+      {showBookingModal && (
+        <div className="modal-overlay" onClick={() => setShowBookingModal(false)}>
+          <div className="modal-content glass" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ fontSize: '1.75rem' }}>🪑</span>
+                <div>
+                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-main)' }}>Table Reservation Required</h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>First book a table to place food orders</p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                className="modal-close-btn"
+                onClick={() => setShowBookingModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <p style={{ color: 'var(--text-body)', lineHeight: '1.6', marginBottom: '1.25rem' }}>
+                {pendingItem ? (
+                  <>
+                    You're ordering <strong style={{ color: 'var(--accent-color)' }}>{pendingItem.name}</strong>. 
+                    At Gusto, meals are prepared fresh and served straight to your reserved dining table.
+                  </>
+                ) : (
+                  <>To place orders from our culinary menu, you must first have an active table reservation.</>
+                )}
+              </p>
+              
+              <div style={{ 
+                background: 'rgba(255, 107, 53, 0.08)', 
+                border: '1px solid rgba(255, 107, 53, 0.25)', 
+                borderRadius: '10px', 
+                padding: '1rem', 
+                marginBottom: '1.5rem',
+                fontSize: '0.9rem',
+                color: 'var(--text-main)'
+              }}>
+                ✨ <strong>Easy 1-Minute Reservation:</strong> Check availability, select your favorite table, and reserve instantly!
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setShowBookingModal(false)}
+                >
+                  Back to Menu
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setShowBookingModal(false);
+                    navigate('/book-table');
+                  }}
+                >
+                  📅 Book Table Now →
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

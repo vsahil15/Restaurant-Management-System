@@ -61,13 +61,26 @@ const Login = () => {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={submitting}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+            <Link to="/forgot-password" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textDecoration: 'none' }}>
+              Forgot password?
+            </Link>
+          </div>
+
+          <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={submitting}>
             {submitting ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
 
-        <div className="auth-footer">
-          Don't have an account? <Link to="/register" className="auth-link">Register here</Link>
+        <div className="auth-footer" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div>
+            Don't have an account? <Link to="/register" className="auth-link">Register here</Link>
+          </div>
+          <div>
+            <Link to="/" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textDecoration: 'none' }}>
+              ← Return to Home Page
+            </Link>
+          </div>
         </div>
       </div>
     </div>

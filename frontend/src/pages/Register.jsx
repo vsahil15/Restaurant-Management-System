@@ -21,8 +21,8 @@ const Register = () => {
       await register(name, email, password);
       setSuccess(true);
       setTimeout(() => {
-        navigate('/login');
-      }, 2000);
+        navigate('/');
+      }, 1200);
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || 'Registration failed. Please try again.');

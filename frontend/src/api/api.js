@@ -63,11 +63,20 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh token is expired or invalid, clear state and redirect
+        // Refresh token is expired or invalid, clear state
         setAccessToken(null);
         localStorage.removeItem('user');
-        // Only redirect if not already on login page (prevents infinite reload)
-        if (window.location.pathname !== '/login') {
+        
+        // Only redirect to login if the user was on an admin or private protected route
+        const currentPath = window.location.pathname;
+        const isPublicPage = currentPath === '/' || 
+                             currentPath === '/menu' || 
+                             currentPath === '/book-table' || 
+                             currentPath === '/login' || 
+                             currentPath === '/register' || 
+                             currentPath === '/forgot-password';
+        
+        if (!isPublicPage) {
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);

@@ -51,7 +51,32 @@ export const AuthProvider = ({ children }) => {
   };
 
   const registerUser = async (name, email, password) => {
-    await api.post('/auth/register', { name, email, password });
+    const response = await api.post('/auth/register', { name, email, password });
+    if (response.data.accessToken && response.data.user) {
+      const { accessToken, user: userData } = response.data;
+      setAccessToken(accessToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      return userData;
+    }
+    return response.data;
+  };
+
+  const forgotPassword = async (email) => {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+  };
+
+  const resetPassword = async (email, newPassword, resetToken = null) => {
+    const response = await api.post('/auth/reset-password', { email, newPassword, resetToken });
+    if (response.data.accessToken && response.data.user) {
+      const { accessToken, user: userData } = response.data;
+      setAccessToken(accessToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      return userData;
+    }
+    return response.data;
   };
 
   const logout = async () => {
@@ -67,7 +92,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register: registerUser, logout, loading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      register: registerUser, 
+      forgotPassword, 
+      resetPassword, 
+      logout, 
+      loading 
+    }}>
       {children}
     </AuthContext.Provider>
   );

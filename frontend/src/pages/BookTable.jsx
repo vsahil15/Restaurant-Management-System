@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useLoaderData, useRevalidator } from 'react-router-dom';
+import { useLoaderData, useRevalidator, useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import api from '../api/api';
 
 // --- Custom Date picker: CalendarWidget ---
@@ -84,7 +85,6 @@ const CalendarWidget = ({ selectedDate, onSelectDate }) => {
 
 // --- 24-Hour Schedule Picker ---
 const TimeScheduleWidget = ({ selectedTime, onSelectTime }) => {
-  // Only allow hours 17, 18, 19, 20, 21, 22 (5:00 PM to 10:00 PM)
   const slots = ['17:00', '18:00', '19:00', '20:00', '21:00', '22:00'];
 
   const getPeriod = (timeStr) => {
@@ -95,7 +95,7 @@ const TimeScheduleWidget = ({ selectedTime, onSelectTime }) => {
     return 'Night';
   };
 
-  const periods = ['Morning', 'Afternoon', 'Evening', 'Night'];
+  const periods = ['Evening', 'Night'];
 
   return (
     <div className="time-schedule-widget">
@@ -104,7 +104,7 @@ const TimeScheduleWidget = ({ selectedTime, onSelectTime }) => {
         if (periodSlots.length === 0) return null;
         return (
           <div key={period} className="period-section">
-            <h4 className="period-title">{period}</h4>
+            <h4 className="period-title">{period} (Dinner Slots)</h4>
             <div className="schedule-grid">
               {periodSlots.map(slot => {
                 const isSelected = selectedTime === slot;
@@ -129,9 +129,9 @@ const TimeScheduleWidget = ({ selectedTime, onSelectTime }) => {
 
 // --- Interactive Circular Clock Widget ---
 const ClockWidget = ({ selectedTime, onSelectTime }) => {
-  const [isAm, setIsAm] = useState(false); // Default to PM
-  const [mode, setMode] = useState('hour'); // 'hour' or 'minute'
-  const [tempHour, setTempHour] = useState(5); // Default to 5 PM
+  const [isAm, setIsAm] = useState(false);
+  const [mode, setMode] = useState('hour');
+  const [tempHour, setTempHour] = useState(5);
   const [tempMinute, setTempMinute] = useState(0);
 
   useEffect(() => {
@@ -150,7 +150,6 @@ const ClockWidget = ({ selectedTime, onSelectTime }) => {
       setTempHour(h);
       setTempMinute(m);
     } else {
-      // Default to 5:00 PM
       setIsAm(false);
       setTempHour(5);
       setTempMinute(0);
@@ -186,7 +185,7 @@ const ClockWidget = ({ selectedTime, onSelectTime }) => {
     updateTime(tempHour, tempMinute, amVal);
   };
 
-  const R = 80; // Radius
+  const R = 80;
   const centerX = 110;
   const centerY = 110;
 
@@ -308,7 +307,7 @@ const ClockWidget = ({ selectedTime, onSelectTime }) => {
 
 // --- Custom Time Picker Wrapper ---
 const TimePickerWidget = ({ selectedTime, onSelectTime }) => {
-  const [activeTab, setActiveTab] = useState('schedule'); // 'schedule' or 'clock'
+  const [activeTab, setActiveTab] = useState('schedule');
 
   return (
     <div className="custom-time-container">
@@ -346,17 +345,23 @@ const isValidBookingTime = (timeStr) => {
   if (isNaN(hours) || isNaN(minutes)) return false;
   
   const totalMinutes = hours * 60 + minutes;
-  // 5:00 PM is 17:00 -> 1020 minutes
-  // 10:00 PM is 22:00 -> 1320 minutes
   return totalMinutes >= 1020 && totalMinutes <= 1320;
 };
 
 const BookTable = () => {
-  const initialBookings = useLoaderData();
+  const initialBookings = useLoaderData() || [];
   const revalidator = useRevalidator();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { user, login, register, forgotPassword, resetPassword } = useAuth();
   
-  const [userDate, setUserDate] = useState('');
-  const [userTime, setUserTime] = useState('');
+  const [userDate, setUserDate] = useState(() => {
+    return searchParams.get('date') || '';
+  });
+  const [userTime, setUserTime] = useState(() => {
+    return searchParams.get('time') || '';
+  });
+
   const [vacantTables, setVacantTables] = useState([]);
   const [selectedTable, setSelectedTable] = useState(null);
   const [checkingVacancy, setCheckingVacancy] = useState(false);
@@ -371,10 +376,45 @@ const BookTable = () => {
 
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
+  const [bookingSuccessData, setBookingSuccessData] = useState(null);
 
-  // Total tables in the restaurant
+  // Guest Authentication & Auto-Registration Modal state
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authTab, setAuthTab] = useState('register'); // 'register' | 'login' | 'forgot'
+  
+  // Registration fields
+  const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestPassword, setGuestPassword] = useState('');
+  
+  // Login fields
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+
+  // Forgot password fields
+  const [forgotStep, setForgotStep] = useState(1);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotResetToken, setForgotResetToken] = useState(null);
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+
+  const [authModalError, setAuthModalError] = useState('');
+  const [authModalSuccess, setAuthModalSuccess] = useState('');
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+
   const totalTables = 25;
   const tableNumbers = Array.from({ length: totalTables }, (_, i) => i + 1);
+
+  // Auto-check availability if query parameters are present
+  useEffect(() => {
+    const pDate = searchParams.get('date');
+    const pTime = searchParams.get('time');
+    if (pDate && pTime) {
+      setUserDate(pDate);
+      setUserTime(pTime);
+      checkAvailability(pDate, pTime);
+    }
+  }, [searchParams]);
 
   // Clear messages after a delay
   useEffect(() => {
@@ -382,7 +422,7 @@ const BookTable = () => {
       const timer = setTimeout(() => {
         setMessage(null);
         setError(null);
-      }, 5000);
+      }, 6000);
       return () => clearTimeout(timer);
     }
   }, [message, error]);
@@ -430,12 +470,36 @@ const BookTable = () => {
     }
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    checkAvailability(userDate, userTime);
+  // Direct backend booking request
+  const executeBooking = async (tableNo, date, time) => {
+    try {
+      const res = await api.post('/booktable/booking', {
+        userTable: tableNo,
+        userDate: date,
+        userTime: time
+      });
+
+      setMessage(res.data.message || `Table #${tableNo} booked successfully!`);
+      setBookingSuccessData({
+        tableNo,
+        date,
+        time
+      });
+
+      setSelectedTable(null);
+      setHasChecked(false);
+      setShowAuthModal(false);
+      revalidator.revalidate();
+      return true;
+    } catch (err) {
+      const errMsg = err.response?.data?.message || "Booking failed.";
+      setError(errMsg);
+      return false;
+    }
   };
 
-  const handleBooking = async (e) => {
+  // Called when user clicks "Reserve Table"
+  const handleBookingClick = async (e) => {
     e.preventDefault();
     if (!selectedTable || !userDate || !userTime) {
       setError("Please check availability and select a vacant table first.");
@@ -447,19 +511,125 @@ const BookTable = () => {
       return;
     }
 
+    // If user is already authenticated, book immediately!
+    if (user) {
+      await executeBooking(selectedTable, userDate, userTime);
+    } else {
+      // Open the auto-registration & authentication modal
+      setAuthModalError('');
+      setAuthModalSuccess('');
+      setAuthTab('register');
+      setShowAuthModal(true);
+    }
+  };
+
+  // Modal: Handle Auto-Register & Book
+  const handleAuthRegisterSubmit = async (e) => {
+    e.preventDefault();
+    setAuthModalError('');
+    setAuthModalSuccess('');
+
+    if (!guestName || !guestEmail || !guestPassword) {
+      setAuthModalError('Please fill in all details.');
+      return;
+    }
+
+    if (guestPassword.length < 6) {
+      setAuthModalError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setAuthSubmitting(true);
     try {
-      const res = await api.post('/booktable/booking', {
-        userTable: selectedTable,
-        userDate,
-        userTime
-      });
-      setMessage(res.data.message || "Table booked successfully!");
-      // Reset form and refresh loaders
-      setSelectedTable(null);
-      setHasChecked(false);
-      revalidator.revalidate();
+      // 1. Register and auto-authenticate user
+      await register(guestName, guestEmail, guestPassword);
+      setAuthModalSuccess('Account created! Finalizing your reservation...');
+      
+      // 2. Immediately execute table booking
+      await executeBooking(selectedTable, userDate, userTime);
     } catch (err) {
-      setError(err.response?.data?.message || "Booking failed.");
+      console.error(err);
+      const errMsg = err.response?.data?.message || '';
+      const errCode = err.response?.data?.code || '';
+
+      if (errCode === 'EMAIL_EXISTS' || errCode === 'USERNAME_EXISTS' || errMsg.toLowerCase().includes('already')) {
+        setAuthModalError('An account with this email or username already exists. Please Sign In below to confirm your table, or reset your password.');
+        setLoginEmail(guestEmail);
+        setForgotEmail(guestEmail);
+        setAuthTab('login');
+      } else {
+        setAuthModalError(errMsg || 'Registration failed. Please try again.');
+      }
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  // Modal: Handle Login & Book
+  const handleAuthLoginSubmit = async (e) => {
+    e.preventDefault();
+    setAuthModalError('');
+    setAuthModalSuccess('');
+    setAuthSubmitting(true);
+
+    try {
+      await login(loginEmail, loginPassword);
+      setAuthModalSuccess('Signed in successfully! Finalizing reservation...');
+      await executeBooking(selectedTable, userDate, userTime);
+    } catch (err) {
+      console.error(err);
+      setAuthModalError(err.response?.data?.message || 'Invalid username/email or password.');
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  // Modal: Handle Forgot Password Step 1
+  const handleForgotEmailSubmit = async (e) => {
+    e.preventDefault();
+    setAuthModalError('');
+    setAuthModalSuccess('');
+    setAuthSubmitting(true);
+
+    try {
+      const res = await forgotPassword(forgotEmail);
+      setForgotResetToken(res.resetToken);
+      setAuthModalSuccess('Account verified. Please create your new password.');
+      setForgotStep(2);
+    } catch (err) {
+      console.error(err);
+      setAuthModalError(err.response?.data?.message || 'No account found with this email.');
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  // Modal: Handle Forgot Password Step 2 (Reset & Book)
+  const handleForgotResetSubmit = async (e) => {
+    e.preventDefault();
+    setAuthModalError('');
+    setAuthModalSuccess('');
+
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setAuthModalError('Passwords do not match.');
+      return;
+    }
+
+    if (forgotNewPassword.length < 6) {
+      setAuthModalError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setAuthSubmitting(true);
+    try {
+      await resetPassword(forgotEmail, forgotNewPassword, forgotResetToken);
+      setAuthModalSuccess('Password updated & logged in! Finalizing reservation...');
+      await executeBooking(selectedTable, userDate, userTime);
+    } catch (err) {
+      console.error(err);
+      setAuthModalError(err.response?.data?.message || 'Failed to update password.');
+    } finally {
+      setAuthSubmitting(false);
     }
   };
 
@@ -476,8 +646,6 @@ const BookTable = () => {
 
   const startEdit = (booking) => {
     setEditingBooking(booking);
-    
-    // Parse combined slot format YYYY-MM-DDTHH:MM:00.000Z
     const slotStr = booking.bookingSlot;
     if (slotStr) {
       const datePart = slotStr.slice(0, 10);
@@ -516,14 +684,39 @@ const BookTable = () => {
     <div>
       <header style={{ marginBottom: '2rem' }}>
         <h1>Table Reservations</h1>
-        <p className="subtitle">Secure your dining spot for a pristine culinary experience.</p>
+        <p className="subtitle">Check real-time availability and secure your dining spot in seconds.</p>
       </header>
 
       {message && <div className="alert alert-success">{message}</div>}
       {error && <div className="alert alert-error">{error}</div>}
 
+      {/* Booking Success Banner with Direct Order CTA */}
+      {bookingSuccessData && (
+        <div className="glass alert-success-card" style={{ marginBottom: '2rem', padding: '1.75rem', border: '1px solid rgba(46, 213, 115, 0.4)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h3 style={{ color: '#2ed573', fontSize: '1.25rem', marginBottom: '0.25rem' }}>
+                🎉 Reservation Confirmed!
+              </h3>
+              <p style={{ color: 'var(--text-main)', fontSize: '0.95rem' }}>
+                Your spot at <strong>Table #{bookingSuccessData.tableNo}</strong> is reserved for{' '}
+                <strong>{bookingSuccessData.date}</strong> at <strong>{bookingSuccessData.time}</strong>.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <Link to="/menu" className="btn btn-primary">
+                🍕 Order Food for Table #{bookingSuccessData.tableNo} →
+              </Link>
+              <button className="btn btn-secondary" onClick={() => setBookingSuccessData(null)}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="content-grid">
-        {/* Reservation Section */}
+        {/* Reservation Form Section */}
         <div>
           {editingBooking ? (
             <div className="glass" style={{ padding: '2rem', marginBottom: '2rem' }}>
@@ -583,11 +776,20 @@ const BookTable = () => {
             </div>
           ) : (
             <div className="glass" style={{ padding: '2rem', marginBottom: '2rem' }}>
-              <h2 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', color: 'var(--accent-color)' }}>New Reservation</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h2 style={{ fontSize: '1.25rem', color: 'var(--accent-color)' }}>
+                  Check Table Availability
+                </h2>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Dinner: 5:00 PM – 10:00 PM
+                </span>
+              </div>
               
               <div className="booking-form-grid">
                 <div className="form-group">
-                  <label htmlFor="book-date" style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 600 }}>Choose Date</label>
+                  <label htmlFor="book-date" style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 600 }}>
+                    1. Choose Date
+                  </label>
                   <CalendarWidget 
                     selectedDate={userDate}
                     onSelectDate={(date) => {
@@ -597,7 +799,9 @@ const BookTable = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="book-time" style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 600 }}>Choose Time</label>
+                  <label htmlFor="book-time" style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 600 }}>
+                    2. Choose Time Slot
+                  </label>
                   <TimePickerWidget 
                     selectedTime={userTime}
                     onSelectTime={(time) => {
@@ -610,26 +814,31 @@ const BookTable = () => {
 
               {checkingVacancy && (
                 <div style={{ textAlign: 'center', color: 'var(--accent-color)', marginBottom: '1.5rem', fontWeight: 500 }}>
-                  ⏳ Checking table vacancy...
+                  ⏳ Checking vacant tables for {userDate} at {userTime}...
                 </div>
               )}
 
               {!hasChecked && !checkingVacancy && (
                 <div style={{ padding: '2.5rem 1.5rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border-color)', borderRadius: '12px', marginBottom: '2rem' }}>
-                  Please select both a date and time slot above to view vacant tables.
+                  Please select both a date and dinner time slot above to see available tables.
                 </div>
               )}
 
               {hasChecked && (
-                <div>
-                  <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: 'var(--text-muted)' }}>
-                    Select a Table (Date: {userDate} at {userTime})
-                  </h3>
+                <div style={{ marginTop: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <h3 style={{ fontSize: '1rem', color: 'var(--text-main)' }}>
+                      3. Select Your Table for {userDate} ({userTime})
+                    </h3>
+                    <span style={{ fontSize: '0.85rem', color: '#2ed573', fontWeight: 600 }}>
+                      {vacantTables.length} / 25 Tables Vacant
+                    </span>
+                  </div>
 
                   <div className="table-legend">
                     <div className="legend-item">
                       <div className="legend-dot vacant"></div>
-                      <span>Vacant</span>
+                      <span>Vacant (Available)</span>
                     </div>
                     <div className="legend-item">
                       <div className="legend-dot reserved"></div>
@@ -637,7 +846,7 @@ const BookTable = () => {
                     </div>
                     <div className="legend-item">
                       <div className="legend-dot my-selection"></div>
-                      <span>Your Choice</span>
+                      <span>Your Selection</span>
                     </div>
                   </div>
 
@@ -659,12 +868,12 @@ const BookTable = () => {
                   </div>
 
                   {selectedTable && (
-                    <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-                      <p style={{ marginBottom: '1rem', fontWeight: 500 }}>
-                        You've selected <strong style={{ color: 'var(--accent-color)' }}>Table #{selectedTable}</strong>
+                    <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(255, 107, 53, 0.08)', borderRadius: '12px', border: '1px solid rgba(255, 107, 53, 0.3)', textAlign: 'center' }}>
+                      <p style={{ marginBottom: '1rem', fontSize: '1.05rem' }}>
+                        Selected: <strong style={{ color: 'var(--accent-color)', fontSize: '1.2rem' }}>Table #{selectedTable}</strong> on <strong>{userDate}</strong> at <strong>{userTime}</strong>
                       </p>
-                      <button onClick={handleBooking} className="btn btn-primary" style={{ width: '100%' }}>
-                        Reserve Table #{selectedTable}
+                      <button onClick={handleBookingClick} className="btn btn-primary" style={{ width: '100%', maxWidth: '400px', fontSize: '1rem', padding: '0.75rem' }}>
+                        {user ? `Confirm Reservation for Table #${selectedTable}` : `Book Table #${selectedTable} (Auto-Register)`}
                       </button>
                     </div>
                   )}
@@ -674,12 +883,19 @@ const BookTable = () => {
           )}
         </div>
 
-        {/* List of active reservations */}
+        {/* List of Active Reservations */}
         <div>
           <div className="glass" style={{ padding: '2rem' }}>
             <h2 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', color: 'var(--text-muted)' }}>My Reservations</h2>
             
-            {initialBookings.length === 0 ? (
+            {!user ? (
+              <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)' }}>
+                <p style={{ marginBottom: '1rem' }}>Sign in to view and manage your booked tables.</p>
+                <Link to="/login" className="btn btn-secondary" style={{ fontSize: '0.85rem' }}>
+                  Sign In to Account
+                </Link>
+              </div>
+            ) : initialBookings.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No active table reservations found.</p>
             ) : (
               <div className="list-items">
@@ -687,7 +903,7 @@ const BookTable = () => {
                   <div key={b._id} className="list-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent-color)' }}>Table #{b.tableNo}</span>
-                      <span style={{ fontSize: '0.8rem', background: 'var(--bg-secondary)', padding: '0.2rem 0.5rem', borderRadius: '5px' }}>
+                      <span style={{ fontSize: '0.8rem', background: 'rgba(46, 213, 115, 0.15)', color: '#2ed573', padding: '0.2rem 0.5rem', borderRadius: '5px' }}>
                         Active
                       </span>
                     </div>
@@ -709,6 +925,275 @@ const BookTable = () => {
           </div>
         </div>
       </div>
+
+      {/* Guest Authentication & Auto-Registration Modal */}
+      {showAuthModal && (
+        <div className="modal-overlay" onClick={() => setShowAuthModal(false)}>
+          <div className="modal-content glass" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '460px' }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ fontSize: '1.75rem' }}>🪑</span>
+                <div>
+                  <h3 style={{ fontSize: '1.2rem', color: 'var(--text-main)' }}>Complete Your Reservation</h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Table #{selectedTable} • {userDate} at {userTime}
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                className="modal-close-btn"
+                onClick={() => setShowAuthModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Tabs */}
+            <div className="modal-tabs">
+              <button 
+                type="button" 
+                className={`modal-tab-btn ${authTab === 'register' ? 'active' : ''}`}
+                onClick={() => { setAuthTab('register'); setAuthModalError(''); }}
+              >
+                New Guest (Register)
+              </button>
+              <button 
+                type="button" 
+                className={`modal-tab-btn ${authTab === 'login' ? 'active' : ''}`}
+                onClick={() => { setAuthTab('login'); setAuthModalError(''); }}
+              >
+                Sign In
+              </button>
+              {authTab === 'forgot' && (
+                <button 
+                  type="button" 
+                  className="modal-tab-btn active"
+                >
+                  Forgot Password
+                </button>
+              )}
+            </div>
+
+            <div className="modal-body">
+              {authModalError && <div className="alert alert-error" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>{authModalError}</div>}
+              {authModalSuccess && <div className="alert alert-success" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>{authModalSuccess}</div>}
+
+              {/* Tab 1: New Guest Registration */}
+              {authTab === 'register' && (
+                <form onSubmit={handleAuthRegisterSubmit}>
+                  <div className="form-group">
+                    <label htmlFor="modal-name">Full Name</label>
+                    <input
+                      type="text"
+                      id="modal-name"
+                      placeholder="e.g. John Doe"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="modal-email">Email Address</label>
+                    <input
+                      type="email"
+                      id="modal-email"
+                      placeholder="john@example.com"
+                      value={guestEmail}
+                      onChange={(e) => setGuestEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="modal-pwd">Password (for future logins)</label>
+                    <input
+                      type="password"
+                      id="modal-pwd"
+                      placeholder="Min 6 characters"
+                      value={guestPassword}
+                      onChange={(e) => setGuestPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary" 
+                    style={{ width: '100%', marginTop: '1rem' }}
+                    disabled={authSubmitting}
+                  >
+                    {authSubmitting ? 'Registering & Reserving...' : `Register & Reserve Table #${selectedTable}`}
+                  </button>
+
+                  <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Already have an account?{' '}
+                    <button 
+                      type="button" 
+                      onClick={() => { setAuthTab('login'); setAuthModalError(''); }}
+                      style={{ background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Sign In here
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Tab 2: Existing User Login */}
+              {authTab === 'login' && (
+                <form onSubmit={handleAuthLoginSubmit}>
+                  <div className="form-group">
+                    <label htmlFor="modal-login-email">Username or Email</label>
+                    <input
+                      type="text"
+                      id="modal-login-email"
+                      placeholder="your.email@example.com"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="modal-login-pwd">Password</label>
+                    <input
+                      type="password"
+                      id="modal-login-pwd"
+                      placeholder="••••••••"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotEmail(loginEmail);
+                        setAuthTab('forgot');
+                        setForgotStep(1);
+                        setAuthModalError('');
+                      }}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.85rem', cursor: 'pointer' }}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary" 
+                    style={{ width: '100%' }}
+                    disabled={authSubmitting}
+                  >
+                    {authSubmitting ? 'Signing In & Reserving...' : `Sign In & Reserve Table #${selectedTable}`}
+                  </button>
+
+                  <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    New to Gusto?{' '}
+                    <button 
+                      type="button" 
+                      onClick={() => { setAuthTab('register'); setAuthModalError(''); }}
+                      style={{ background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Register as Guest
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Tab 3: Forgot Password Flow */}
+              {authTab === 'forgot' && (
+                <div>
+                  {forgotStep === 1 ? (
+                    <form onSubmit={handleForgotEmailSubmit}>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-body)', marginBottom: '1rem' }}>
+                        Enter your registered email address to verify your account and set a new password:
+                      </p>
+
+                      <div className="form-group">
+                        <label htmlFor="modal-forgot-email">Registered Email</label>
+                        <input
+                          type="email"
+                          id="modal-forgot-email"
+                          placeholder="your.email@example.com"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <button 
+                        type="submit" 
+                        className="btn btn-primary" 
+                        style={{ width: '100%', marginTop: '1rem' }}
+                        disabled={authSubmitting}
+                      >
+                        {authSubmitting ? 'Verifying...' : 'Verify Email'}
+                      </button>
+
+                      <button 
+                        type="button" 
+                        className="btn btn-secondary" 
+                        style={{ width: '100%', marginTop: '0.5rem' }}
+                        onClick={() => setAuthTab('login')}
+                      >
+                        Back to Sign In
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleForgotResetSubmit}>
+                      <div className="form-group">
+                        <label htmlFor="modal-new-pwd">Create New Password</label>
+                        <input
+                          type="password"
+                          id="modal-new-pwd"
+                          placeholder="Min 6 characters"
+                          value={forgotNewPassword}
+                          onChange={(e) => setForgotNewPassword(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="modal-confirm-pwd">Confirm New Password</label>
+                        <input
+                          type="password"
+                          id="modal-confirm-pwd"
+                          placeholder="Repeat new password"
+                          value={forgotConfirmPassword}
+                          onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <button 
+                        type="submit" 
+                        className="btn btn-primary" 
+                        style={{ width: '100%', marginTop: '1rem' }}
+                        disabled={authSubmitting}
+                      >
+                        {authSubmitting ? 'Saving & Reserving...' : `Update Password & Reserve Table #${selectedTable}`}
+                      </button>
+
+                      <button 
+                        type="button" 
+                        className="btn btn-secondary" 
+                        style={{ width: '100%', marginTop: '0.5rem' }}
+                        onClick={() => setForgotStep(1)}
+                      >
+                        Back
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

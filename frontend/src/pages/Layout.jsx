@@ -27,15 +27,21 @@ const Layout = () => {
     <div className="layout-container">
       {/* Mobile Top Header */}
       <header className="mobile-header">
-        <div className="mobile-brand">
+        <div className="mobile-brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
           <span className="brand-icon">🍽️</span>
           <span className="brand-name">Gusto</span>
         </div>
         
         <div className="mobile-header-right">
-          <div className="user-avatar-sm" title={user?.name}>
-            {getInitials(user?.name)}
-          </div>
+          {user ? (
+            <div className="user-avatar-sm" title={user?.name}>
+              {getInitials(user?.name)}
+            </div>
+          ) : (
+            <NavLink to="/login" className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
+              Sign In
+            </NavLink>
+          )}
           <button 
             type="button"
             className={`hamburger-btn ${mobileMenuOpen ? 'open' : ''}`}
@@ -61,13 +67,13 @@ const Layout = () => {
 
       {/* Sidebar Navigation */}
       <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
-        <div className="brand-section">
+        <div className="brand-section" onClick={() => { navigate('/'); closeMobileMenu(); }} style={{ cursor: 'pointer' }}>
           <span className="brand-icon">🍽️</span>
-          <span className="brand-name">Gusto Portal</span>
+          <span className="brand-name">Gusto Bistro</span>
           <button 
             type="button" 
             className="sidebar-close-btn"
-            onClick={closeMobileMenu}
+            onClick={(e) => { e.stopPropagation(); closeMobileMenu(); }}
             aria-label="Close menu"
           >
             ✕
@@ -82,7 +88,15 @@ const Layout = () => {
                   <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                   <polyline points="9 22 9 12 15 12 15 22"/>
                 </svg>
-                <span>Dashboard</span>
+                <span>Home</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/menu" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={closeMobileMenu}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                <span>Menu</span>
               </NavLink>
             </li>
             <li>
@@ -94,14 +108,6 @@ const Layout = () => {
                   <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
                 <span>Book Table</span>
-              </NavLink>
-            </li>
-            <li>
-              <NavLink to="/menu" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={closeMobileMenu}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                </svg>
-                <span>Order Food</span>
               </NavLink>
             </li>
             <li>
@@ -155,18 +161,36 @@ const Layout = () => {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="user-profile">
-            <div className="user-avatar">
-              {getInitials(user?.name)}
+          {user ? (
+            <>
+              <div className="user-profile">
+                <div className="user-avatar">
+                  {getInitials(user?.name)}
+                </div>
+                <div className="user-details">
+                  <span className="user-name">{user?.name || 'Valued Guest'}</span>
+                  <span className="user-role">{user?.email || 'guest@gusto.com'}</span>
+                </div>
+              </div>
+              <button onClick={handleLogout} className="btn-logout">
+                <span>Log Out</span>
+              </button>
+            </>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                Welcome to Gusto!
+              </div>
+              <NavLink 
+                to="/login" 
+                className="btn btn-primary" 
+                style={{ width: '100%', textAlign: 'center', justifyContent: 'center' }}
+                onClick={closeMobileMenu}
+              >
+                Sign In / Register
+              </NavLink>
             </div>
-            <div className="user-details">
-              <span className="user-name">{user?.name || 'Valued Guest'}</span>
-              <span className="user-role">{user?.email || 'guest@gusto.com'}</span>
-            </div>
-          </div>
-          <button onClick={handleLogout} className="btn-logout">
-            <span>Log Out</span>
-          </button>
+          )}
         </div>
       </aside>
 

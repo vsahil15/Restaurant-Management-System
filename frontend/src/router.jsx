@@ -2,8 +2,10 @@ import React from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import api from './api/api';
 import Layout from './pages/Layout';
+import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import BookTable from './pages/BookTable';
 import Menu from './pages/Menu';
@@ -38,7 +40,7 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
-// Loader function definitions for data routers (Data Approach)
+// Loader function definitions for data routers
 export const menuLoader = async () => {
   try {
     const res = await api.get('/menu');
@@ -54,7 +56,6 @@ export const bookingsLoader = async () => {
     const res = await api.get('/booktable/my-bookings');
     return res.data.bookings || [];
   } catch (err) {
-    console.error("Failed to load bookings:", err);
     return [];
   }
 };
@@ -64,7 +65,6 @@ export const ordersLoader = async () => {
     const res = await api.get('/order/my-orders');
     return res.data.orders || [];
   } catch (err) {
-    console.error("Failed to load orders:", err);
     return [];
   }
 };
@@ -89,16 +89,24 @@ export const router = createBrowserRouter([
     element: <Register />,
   },
   {
+    path: '/forgot-password',
+    element: <ForgotPassword />,
+  },
+  {
     path: '/',
-    element: (
-      <ProtectedRoute>
-        <Layout />
-      </ProtectedRoute>
-    ),
+    element: <Layout />,
     children: [
       {
         index: true,
-        element: <Dashboard />,
+        element: <Home />,
+      },
+      {
+        path: 'dashboard',
+        element: (
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'book-table',
@@ -135,3 +143,4 @@ export const router = createBrowserRouter([
     element: <Navigate to="/" replace />,
   },
 ]);
+
