@@ -28,6 +28,15 @@
   -webkit-font-smoothing: antialiased;
 }
 
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+a:hover, a:focus, a:active {
+  text-decoration: none;
+}
+
 body {
   background-color: var(--bg-primary);
   color: var(--text-main);
@@ -371,7 +380,9 @@ h1 {
 }
 
 /* Buttons */
-.btn {
+.btn,
+a.btn,
+button.btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -383,40 +394,55 @@ h1 {
   transition: var(--transition-smooth);
   border: none;
   font-size: 0.95rem;
+  text-decoration: none !important;
+}
+
+.btn:hover,
+a.btn:hover,
+button.btn:hover {
+  text-decoration: none !important;
 }
 
 .btn-primary {
   background: var(--accent-color);
-  color: white;
+  color: #ffffff !important;
+  text-decoration: none !important;
 }
 
 .btn-primary:hover {
   background: var(--accent-hover);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(255, 107, 53, 0.3);
+  text-decoration: none !important;
+  color: #ffffff !important;
 }
 
 .btn-secondary {
   background: var(--bg-secondary);
-  color: var(--text-main);
+  color: var(--text-main) !important;
   border: 1px solid var(--border-color);
+  text-decoration: none !important;
 }
 
 .btn-secondary:hover {
   background: rgba(255, 255, 255, 0.05);
   transform: translateY(-2px);
+  text-decoration: none !important;
+  color: var(--text-main) !important;
 }
 
 .btn-danger {
   background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  color: #ef4444 !important;
   border: 1px solid rgba(239, 68, 68, 0.2);
+  text-decoration: none !important;
 }
 
 .btn-danger:hover {
   background: #ef4444;
-  color: white;
+  color: #ffffff !important;
   transform: translateY(-2px);
+  text-decoration: none !important;
 }
 
 /* Forms & Inputs */
